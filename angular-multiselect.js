@@ -1,6 +1,5 @@
-angular.module('ui.multiselect', [
-  'multiselect.tpl.html'
-])
+// Source: https://github.com/amitava82/angular-multiselect
+angular.module('ui.multiselect', [])
 
   //from bootstrap-ui typeahead parser
   .factory('optionParser', ['$parse', function ($parse) {
@@ -52,8 +51,10 @@ angular.module('ui.multiselect', [
             scope.$destroy();
           });
 
-          var popUpEl = angular.element('<multiselect-popup></multiselect-popup>');
-
+          var popUpEl = angular.element('<multiselect-popup' + 
+                        (attrs.templateUrl ? (' template-url="' + attrs.templateUrl + '"'): '' ) + 
+                        '></multiselect-popup>');
+						
           //required validator
           if (attrs.required || attrs.ngRequired) {
             required = true;
@@ -108,7 +109,7 @@ angular.module('ui.multiselect', [
               local[parsedResult.itemName] = model[i];
               scope.items.push({
                 label: parsedResult.viewMapper(local),
-                model: model[i],
+                model: parsedResult.modelMapper(local),
                 checked: false
               });
             }
@@ -120,24 +121,32 @@ angular.module('ui.multiselect', [
 
           function getHeaderText() {
             if (is_empty(modelCtrl.$modelValue)) return scope.header = attrs.msHeader || 'Select';
-
+            
               if (isMultiple) {
                   if (attrs.msSelected) {
                       scope.header = $interpolate(attrs.msSelected)(scope);
                   } else {
-                      scope.header = modelCtrl.$modelValue.length + ' ' + 'selected';
+                     if (modelCtrl.$modelValue.length == 1) {
+                          for(var i = 0; i < scope.items.length; i++) {
+                              if(scope.items[i].model === modelCtrl.$modelValue[0]) {
+                                  scope.header = scope.items[i].label;
+                              }
+                          }
+                      } else {
+                          scope.header = modelCtrl.$modelValue.length + ' ' + 'selected';
+                      }
                   }
-
+              
             } else {
               var local = {};
               local[parsedResult.itemName] = modelCtrl.$modelValue;
-              scope.header = parsedResult.viewMapper(local);
+              scope.header = parsedResult.viewMapper(local) || scope.items[modelCtrl.$modelValue].label;
             }
           }
-
+          
           function is_empty(obj) {
-            if (!obj) return true;
-            if (obj.length && obj.length > 0) return false;
+            if (angular.isNumber(obj)) return false;
+            if (obj && obj.length && obj.length > 0) return false;
             for (var prop in obj) if (obj[prop]) return false;
             return true;
           };
@@ -186,7 +195,9 @@ angular.module('ui.multiselect', [
             if (!angular.isArray(newVal)) {
               angular.forEach(scope.items, function (item) {
                 if (angular.equals(item.model, newVal)) {
+                  scope.uncheckAll();
                   item.checked = true;
+                  setModelValue(false);
                   return false;
                 }
               });
@@ -234,7 +245,25 @@ angular.module('ui.multiselect', [
       restrict: 'E',
       scope: false,
       replace: true,
-      templateUrl: 'multiselect.tpl.html',
+      template: 
+      '<div class="btn-group">' +
+        '<button type="button" class="btn btn-default dropdown-toggle" ng-click="toggleSelect()" ng-disabled="disabled" ng-class="{\'error\': !valid()}">' + 
+          '{{header}} <span class="caret"></span>' + 
+        '</button>' +
+        '<ul class="dropdown-menu">' +
+          '<li>' +
+            '<input class="form-control input-sm" type="text" ng-model="searchText.label" autofocus="autofocus" placeholder="Filter" />' +
+          '</li>' +
+          '<li ng-show="multiple" role="presentation" class="">' +
+            '<button class="btn btn-link btn-xs" ng-click="checkAll()" type="button"><i class="glyphicon glyphicon-ok"></i> Check all</button>' +
+            '<button class="btn btn-link btn-xs" ng-click="uncheckAll()" type="button"><i class="glyphicon glyphicon-remove"></i> Uncheck all</button>' +
+          '</li>' +
+          '<li ng-repeat="i in items | filter:searchText">' +
+            '<a ng-click="select(i); focus()">' +
+            '<i class="glyphicon" ng-class="{\'glyphicon-ok\': i.checked, \'empty\': !i.checked}"></i> {{i.label}}</a>' +
+          '</li>' +
+        '</ul>' +
+      '</div>',
       link: function (scope, element, attrs) {
 
         scope.isVisible = false;
@@ -260,7 +289,7 @@ angular.module('ui.multiselect', [
 
         scope.focus = function focus(){
           var searchBox = element.find('input')[0];
-          searchBox.focus();
+          searchBox.focus(); 
         }
 
         var elementMatchesAnyInArray = function (element, elementArray) {
@@ -273,27 +302,3 @@ angular.module('ui.multiselect', [
     }
   }]);
 
-angular.module('multiselect.tpl.html', [])
-
-  .run(['$templateCache', function($templateCache) {
-    $templateCache.put('multiselect.tpl.html',
-
-      "<div class=\"btn-group\">\n" +
-      "  <button type=\"button\" class=\"btn btn-default dropdown-toggle\" ng-click=\"toggleSelect()\" ng-disabled=\"disabled\" ng-class=\"{'error': !valid()}\">\n" +
-      "    {{header}} <span class=\"caret\"></span>\n" +
-      "  </button>\n" +
-      "  <ul class=\"dropdown-menu\">\n" +
-      "    <li>\n" +
-      "      <input class=\"form-control input-sm\" type=\"text\" ng-model=\"searchText.label\" autofocus=\"autofocus\" placeholder=\"Filter\" />\n" +
-      "    </li>\n" +
-      "    <li ng-show=\"multiple\" role=\"presentation\" class=\"\">\n" +
-      "      <button class=\"btn btn-link btn-xs\" ng-click=\"checkAll()\" type=\"button\"><i class=\"glyphicon glyphicon-ok\"></i> Check all</button>\n" +
-      "      <button class=\"btn btn-link btn-xs\" ng-click=\"uncheckAll()\" type=\"button\"><i class=\"glyphicon glyphicon-remove\"></i> Uncheck all</button>\n" +
-      "    </li>\n" +
-      "    <li ng-repeat=\"i in items | filter:searchText\">\n" +
-      "      <a ng-click=\"select(i); focus()\">\n" +
-      "        <i class=\"glyphicon\" ng-class=\"{'glyphicon-ok': i.checked, 'empty': !i.checked}\"></i> {{i.label}}</a>\n" +
-      "    </li>\n" +
-      "  </ul>\n" +
-      "</div>");
-  }]);
