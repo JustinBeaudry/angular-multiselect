@@ -43,7 +43,7 @@ angular.module('ui.multiselect', [])
             changeHandler = attrs.change || angular.noop;
 
           scope.items = [];
-          scope.header = 'Select';
+          scope.header = attrs.header || 'Select';
           scope.multiple = isMultiple;
           scope.disabled = false;
 
