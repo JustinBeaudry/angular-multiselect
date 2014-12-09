@@ -3,9 +3,9 @@ angular.module('ui.multiselect', [])
 
   .filter('arrayString', function arrayStringFilter() {
     return function(input, format) {
-      if (_.isArray(input)) {
+      if (Array.isArray(input)) {
         // default to joining with a comma
-        if (!_.isString(format)) {
+        if (typeof format === 'string') {
           format = ', ';
         }
         return input.join(format);
