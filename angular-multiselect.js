@@ -25,7 +25,7 @@ angular.module('ui.multiselect', [])
         var match = input.match(TYPEAHEAD_REGEXP), modelMapper, viewMapper, source;
         if (!match) {
           throw new Error(
-            "Expected typeahead specification in form of '_modelValue_ (as _label_)? for _item_ in _collection_'" +
+            "Expected typeahead specification in form of '_modelValue_ (as string_label_)? for _item_ in _collection_'" +
               " but got '" + input + "'.");
         }
 
@@ -49,6 +49,7 @@ angular.module('ui.multiselect', [])
           var exp = attrs.options,
             parsedResult = optionParser.parse(exp),
             isMultiple = attrs.multiple ? true : false,
+            displayAll = (attrs.displayAllSelected === 'true'),
             required = false,
             scope = originalScope.$new(),
             changeHandler = attrs.change || angular.noop;
@@ -147,7 +148,8 @@ angular.module('ui.multiselect', [])
                               }
                           }
                       } else {
-                          scope.header =  $filter('arrayString')(modelCtrl.$modelValue);
+                            scope.header = displayAll ? $filter('arrayString')(modelCtrl.$modelValue) :
+                              modelCtrl.$modelValue.length + ' Selected';
                       }
                   }
 
