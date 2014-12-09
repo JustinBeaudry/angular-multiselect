@@ -1,9 +1,21 @@
 // Source: https://github.com/amitava82/angular-multiselect
 angular.module('ui.multiselect', [])
 
-  //from bootstrap-ui typeahead parser
-  .factory('optionParser', ['$parse', function ($parse) {
+  .filter('arrayString', function arrayStringFilter() {
+    return function(input, format) {
+      if (_.isArray(input)) {
+        // default to joining with a comma
+        if (!_.isString(format)) {
+          format = ', ';
+        }
+        return input.join(format);
+      }
+      return input;
+    };
+  })
 
+  //from bootstrap-ui typeahead parser
+  .factory('optionParser', ['$parse', function optionParserFactory($parse) {
     //                      00000111000000000000022200000000000000003333333333333330000000000044000
     var TYPEAHEAD_REGEXP = /^\s*(.*?)(?:\s+as\s+(.*?))?\s+for\s+(?:([\$\w][\$\w\d]*))\s+in\s+(.*)$/;
 
@@ -27,9 +39,8 @@ angular.module('ui.multiselect', [])
     };
   }])
 
-  .directive('multiselect', ['$parse', '$document', '$compile', '$interpolate', 'optionParser',
-
-    function ($parse, $document, $compile, $interpolate, optionParser) {
+  .directive('multiselect', ['$parse', '$document', '$compile', '$interpolate', '$filter', 'optionParser',
+    function multiselectDirective($parse, $document, $compile, $interpolate, $filter, optionParser) {
       return {
         restrict: 'E',
         require: 'ngModel',
@@ -43,7 +54,7 @@ angular.module('ui.multiselect', [])
             changeHandler = attrs.change || angular.noop;
 
           scope.items = [];
-          scope.header = attrs.header || 'Select';
+          scope.header = 'Select';
           scope.multiple = isMultiple;
           scope.disabled = false;
 
@@ -51,10 +62,10 @@ angular.module('ui.multiselect', [])
             scope.$destroy();
           });
 
-          var popUpEl = angular.element('<multiselect-popup' + 
-                        (attrs.templateUrl ? (' template-url="' + attrs.templateUrl + '"'): '' ) + 
+          var popUpEl = angular.element('<multiselect-popup' +
+                        (attrs.templateUrl ? (' template-url="' + attrs.templateUrl + '"'): '' ) +
                         '></multiselect-popup>');
-						
+
           //required validator
           if (attrs.required || attrs.ngRequired) {
             required = true;
@@ -101,17 +112,20 @@ angular.module('ui.multiselect', [])
           }, true);
 
           function parseModel() {
+            var selections = modelCtrl.$modelValue || [];
             scope.items.length = 0;
             var model = parsedResult.source(originalScope);
             if(!angular.isDefined(model)) return;
             for (var i = 0; i < model.length; i++) {
               var local = {};
               local[parsedResult.itemName] = model[i];
-              scope.items.push({
+              var item = {
                 label: parsedResult.viewMapper(local),
                 model: parsedResult.modelMapper(local),
                 checked: false
-              });
+              };
+              item.checked = (selections.indexOf(item.model) !== -1);
+              scope.items.push(item);
             }
           }
 
@@ -120,8 +134,8 @@ angular.module('ui.multiselect', [])
           element.append($compile(popUpEl)(scope));
 
           function getHeaderText() {
-            if (is_empty(modelCtrl.$modelValue)) return scope.header = attrs.msHeader || 'Select';
-            
+            if (is_empty(modelCtrl.$modelValue)) return scope.header = attrs.header || 'Select';
+
               if (isMultiple) {
                   if (attrs.msSelected) {
                       scope.header = $interpolate(attrs.msSelected)(scope);
@@ -133,17 +147,17 @@ angular.module('ui.multiselect', [])
                               }
                           }
                       } else {
-                          scope.header = modelCtrl.$modelValue.length + ' ' + 'selected';
+                          scope.header =  $filter('arrayString')(modelCtrl.$modelValue);
                       }
                   }
-              
+
             } else {
               var local = {};
               local[parsedResult.itemName] = modelCtrl.$modelValue;
               scope.header = parsedResult.viewMapper(local) || scope.items[modelCtrl.$modelValue].label;
             }
           }
-          
+
           function is_empty(obj) {
             if (angular.isNumber(obj)) return false;
             if (obj && obj.length && obj.length > 0) return false;
@@ -245,10 +259,10 @@ angular.module('ui.multiselect', [])
       restrict: 'E',
       scope: false,
       replace: true,
-      template: 
+      template:
       '<div class="btn-group">' +
-        '<button type="button" class="btn btn-default dropdown-toggle" ng-click="toggleSelect()" ng-disabled="disabled" ng-class="{\'error\': !valid()}">' + 
-          '{{header}} <span class="caret"></span>' + 
+        '<button type="button" class="btn btn-default dropdown-toggle" ng-click="toggleSelect()" ng-disabled="disabled" ng-class="{\'error\': !valid()}">' +
+          '{{header}} <span class="caret"></span>' +
         '</button>' +
         '<ul class="dropdown-menu">' +
           '<li>' +
@@ -289,7 +303,7 @@ angular.module('ui.multiselect', [])
 
         scope.focus = function focus(){
           var searchBox = element.find('input')[0];
-          searchBox.focus(); 
+          searchBox.focus();
         }
 
         var elementMatchesAnyInArray = function (element, elementArray) {
